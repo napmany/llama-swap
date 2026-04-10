@@ -646,6 +646,13 @@ func (pm *ProxyManager) proxyInferenceHandler(c *gin.Context) {
 				pm.sendErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("error rewriting model name in JSON: %s", err.Error()))
 				return
 			}
+		} else if requestedModel != modelID {
+			// Rewrite alias to real model name so the backend recognizes it
+			bodyBytes, err = sjson.SetBytes(bodyBytes, "model", modelID)
+			if err != nil {
+				pm.sendErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("error rewriting model name in JSON: %s", err.Error()))
+				return
+			}
 		}
 
 		// issue #174 strip parameters from the JSON body
@@ -795,8 +802,9 @@ func (pm *ProxyManager) proxyOAIPostFormHandler(c *gin.Context) {
 				// # issue #69 allow custom model names to be sent to upstream
 				if useModelName != "" {
 					fieldValue = useModelName
-				} else {
-					fieldValue = requestedModel
+				} else if requestedModel != modelID {
+					// Rewrite alias to real model name so the backend recognizes it
+					fieldValue = modelID
 				}
 			}
 			field, err := multipartWriter.CreateFormField(key)
